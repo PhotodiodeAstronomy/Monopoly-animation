@@ -1,5 +1,5 @@
 body { font-family: system-ui, sans-serif; background: #fff; margin:0; padding:20px; }
 .container { max-width: 900px; margin: auto; text-align: center; }
-h1 { font-size: 1.8em; margin-bottom: 0.5em; }
-#animation { width: 100%; max-width: 800px; margin: 2em auto; }
-.caption { font-size: 1.3em; margin: 2em; line-height: 1.5; }
+h1 { font-size: 1.5em; margin-bottom: 0.8em; }
+#animation { width: 100%; max-width: 800px; margin: 2em auto; border: 1px solid #ddd; background: white; }
+.caption { font-size: 1.3em; margin: 2em; line-height: 1.5; font-weight: 500; }
