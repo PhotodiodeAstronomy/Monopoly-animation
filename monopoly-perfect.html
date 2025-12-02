@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Competition → Monopoly Divergence</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background: #fff; margin:0; padding:20px; }
+    .container { max-width: 900px; margin: auto; text-align: center; }
+    h1 { font-size: 1.6em; margin-bottom: 0.8em; }
+    #animation { width: 100%; max-width: 820px; height: auto; margin: 2em auto; background: white; box-shadow: 0 0 10px rgba(0,0,0,0.1); display: block; }
+    .caption { font-size: 1.4em; margin: 2em; line-height: 1.5; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>How Monopoly Tears Apart the Three Points That Align in Perfect Competition</h1>
+    <canvas id="animation" width="820" height="620"></canvas>
+    <div class="caption" id="caption"></div>
+  </div>
+  <script>
+    const canvas = document.getElementById('animation');
+    const ctx = canvas.getContext('2d');
+    const caption = document.getElementById('caption');
+
+    const left = 80, right = 740, bottom = 540, top = 60;
+    function x(q) { return left + (q / 200) * (right - left); }
+    function y(p) { return bottom - (p / 220) * (bottom - top); }
+
+    function clear() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
+
+    function drawAxes() {
+      ctx.strokeStyle = '#333'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(left, top); ctx.lineTo(left, bottom); ctx.lineTo(right, bottom); ctx.stroke();
+      ctx.font = '14px sans-serif'; ctx.fillStyle = '#000';
+      ctx.fillText('Quantity (Q)', 700, bottom + 30);
+      ctx.fillText('Price, Cost ($)', left - 60, top - 10);
+    }
+
+    function ATC(q) { return 50 + 1000 / q + 0.01 * q * q; }
+    function MC(q) { return 50 + 0.02 * q; }
+
+    function drawCurve(fn, color, width = 4, alpha = 1) {
+      ctx.globalAlpha = alpha;
+      ctx.strokeStyle = color; ctx.lineWidth = width;
+      ctx.beginPath();
+      let first = true;
+      for (let q = 10; q <= 200; q += 0.5) {
+        const px = x(q), py = y(fn(q));
+        if (first) { ctx.moveTo(px, py); first = false; } else { ctx.lineTo(px, py); }
+      }
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+
+    function drawLine(q1, p1, q2, p2, color, width = 4, dash = false) {
+      ctx.strokeStyle = color; ctx.lineWidth = width;
+      if (dash) ctx.setLineDash([10,6]); else ctx.setLineDash([]);
+      ctx.beginPath(); ctx.moveTo(x(q1), y(p1)); ctx.lineTo(x(q2), y(p2)); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    function dot(q, p, color, r = 10) {
+      ctx.fillStyle = color;
+      ctx.beginPath(); ctx.arc(x(q), y(p), r, 0, Math.PI * 2); ctx.fill();
+    }
+
+    function label(text, q, p, color, offsetY = -20) {
+      ctx.fillStyle = color; ctx.font = 'bold 16px sans-serif';
+      const textWidth = ctx.measureText(text).width;
+      ctx.fillText(text, x(q) - textWidth / 2, y(p) + offsetY);
+    }
+
+    // Animation loop
+    let t = 0;
+    const totalTime = 20000; // 20s
+    function animate() {
+      clear();
+      drawAxes();
+      const progress = (t % totalTime) / totalTime;
+
+      if (progress < 0.35) {
+        // Perfect competition phase
+        caption.textContent = "Perfect Competition — all three points coincide";
+        const fade = progress / 0.35;
+        if (fade > 0.1) drawCurve(ATC, '#1f77b4', 4, fade);
+        if (fade > 0.3) drawCurve(MC, '#ff7f0e', 4, Math.min((fade - 0.3) * 5, 1));
+        if (fade > 0.5) drawLine(0, 90, 200, 90, '#2ca02c', 3);
+        if (fade > 0.7) {
+          dot(100, 90, '#9467bd');
+          label("All three coincide", 100, 90, '#9467bd', -25);
+        }
+      } else if (progress < 0.7) {
+        // Transition phase
+        caption.textContent = "Now the same industry becomes a monopoly…";
+        drawCurve(ATC, '#1f77b4');
+        drawCurve(MC, '#ff7f0e');
+        const trans = (progress - 0.35) / 0.35;
+        if (trans > 0.2) drawLine(0, 200, 200, 0, '#d62728');
+        if (trans > 0.4) drawLine(0, 200, 100, 0, '#d62728', 3, true);
+        if (trans > 0.6) {
+          const split = Math.min((trans - 0.6) / 0.4, 1);
+          const pinkQ = 100 - split * 25;
+          const pinkP = 90 + split * 35;
+          dot(pinkQ, pinkP, '#e377c2');
+          if (split > 0.3) dot(100, 90, '#1f77b4');
+          if (split > 0.6) dot(150, 90, '#2ca02c');
+        }
+      } else {
+        // Monopoly phase
+        caption.textContent = "Monopoly: three separate points = inefficiency + rents";
+        drawCurve(ATC, '#1f77b4');
+        drawCurve(MC, '#ff7f0e');
+        drawLine(0, 200, 200, 0, '#d62728');
+        drawLine(0, 200, 100, 0, '#d62728', 3, true);
+        dot(75, 125, '#e377c2');
+        label("Profit-max Q", 75, 125, '#e377c2');
+        dot(100, 90, '#1f77b4');
+        label("Min efficient scale", 100, 90, '#1f77b4');
+        dot(150, 90, '#2ca02c');
+        label("Social optimum", 150, 90, '#2ca02c');
+        // DWL triangle
+        ctx.fillStyle = 'rgba(255, 153, 153, 0.6)';
+        ctx.beginPath();
+        ctx.moveTo(x(75), y(125));
+        ctx.lineTo(x(150), y(90));
+        ctx.lineTo(x(150), y(125));
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      t += 16;
+      requestAnimationFrame(animate);
+    }
+
+    animate();
+    caption.textContent = ''; // Clear on start
+  </script>
+</body>
+</html>
