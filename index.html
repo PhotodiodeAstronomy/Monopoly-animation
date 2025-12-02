@@ -3,15 +3,129 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Competition → Monopoly Divergence</title>
-  <link rel="stylesheet" href="style.css"/>
+  <title>Competition to Monopoly Divergence</title>
+  <style>
+    body { font-family: sans-serif; background: #fff; margin: 0; padding: 20px; }
+    .container { max-width: 900px; margin: auto; text-align: center; }
+    h1 { font-size: 1.6em; margin-bottom: 1em; }
+    #animation { width: 100%; max-width: 800px; height: 600px; background: white; border: 1px solid #ddd; margin: 2em auto; }
+    .caption { font-size: 1.3em; margin: 2em; line-height: 1.5; }
+  </style>
 </head>
 <body>
   <div class="container">
     <h1>How Monopoly Tears Apart the Three Points That Align in Perfect Competition</h1>
-    <canvas id="animation" width="820" height="620"></canvas>
-    <div class="caption" id="caption">Loading animation...</div>
+    <canvas id="animation" width="800" height="600"></canvas>
+    <div class="caption" id="caption">Perfect Competition: All three points coincide</div>
   </div>
-  <script src="script.js?v=3"></script>
+  <script>
+    const canvas = document.getElementById('animation');
+    const ctx = canvas.getContext('2d');
+    const caption = document.getElementById('caption');
+
+    const left = 80, bottom = 520, width = 640, height = 400;
+    function x(q) { return left + (q / 200) * width; }
+    function y(p) { return bottom - (p / 150) * height; }
+
+    function clear() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
+
+    function drawAxes() {
+      ctx.strokeStyle = '#000'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(left, 50); ctx.lineTo(left, bottom); ctx.lineTo(720, bottom); ctx.stroke();
+      ctx.fillText('Quantity', 730, bottom + 20);
+      ctx.fillText('Costs and Revenue', left - 40, 40);
+      // Dotted verticals from your images
+      ctx.setLineDash([5,5]); ctx.beginPath(); ctx.moveTo(x(50),50); ctx.lineTo(x(50),bottom); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x(100),50); ctx.lineTo(x(100),bottom); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // Curves from your images (approximated to match shapes)
+    function ATC(q) { return 20 + 80 * Math.sin(q / 20) + 0.005 * q * q; } // U-shape like your blue ATC
+    function MC(q) { return 10 + 0.8 * q; } // Upward like your red MC
+    function drawCurve(fn, color, width = 2, dash = false) {
+      ctx.strokeStyle = color; ctx.lineWidth = width;
+      if (dash) ctx.setLineDash([5,5]); else ctx.setLineDash([]);
+      ctx.beginPath();
+      for (let q = 0; q <= 200; q += 1) {
+        const px = x(q), py = y(fn(q));
+        q === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+      }
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    function drawLine(q1, p1, q2, p2, color, width = 2, dash = false) {
+      ctx.strokeStyle = color; ctx.lineWidth = width;
+      if (dash) ctx.setLineDash([5,5]); else ctx.setLineDash([]);
+      ctx.beginPath(); ctx.moveTo(x(q1), y(p1)); ctx.lineTo(x(q2), y(p2)); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    function dot(q, p, color = '#000', r = 4) {
+      ctx.fillStyle = color;
+      ctx.beginPath(); ctx.arc(x(q), y(p), r, 0, Math.PI * 2); ctx.fill();
+    }
+
+    function rectangle(q1, p1, q2, p2, color = '#ffd700', opacity = 0.3) {
+      ctx.fillStyle = color; ctx.globalAlpha = opacity;
+      ctx.fillRect(x(q1), y(p2), x(q2) - x(q1), y(p1) - y(p2));
+      ctx.globalAlpha = 1;
+    }
+
+    // Animation loop (20s total, 10s competition, 5s transition, 5s monopoly)
+    let t = 0;
+    const total = 20000;
+    function animate() {
+      clear(); drawAxes();
+      const progress = (t % total) / total;
+
+      if (progress < 0.5) {
+        // Perfect competition (your first image)
+        caption.textContent = "Perfect Competition: All three points coincide at Qmax";
+        const f = progress / 0.5;
+        if (f > 0.2) drawCurve(ATC, '#0000ff', 2); // Blue ATC
+        if (f > 0.4) drawCurve(MC, '#ff0000', 2); // Red MC
+        if (f > 0.6) drawLine(0, 80, 200, 80, '#800000', 2); // Maroon P=MR=AR
+        if (f > 0.8) { dot(100, 80, '#000'); label('Qmax', 100, 80); }
+      } else if (progress < 0.75) {
+        // Transition
+        caption.textContent = "Transition to Monopoly: Points diverge";
+        drawCurve(ATC, '#0000ff', 2);
+        drawCurve(MC, '#ff0000', 2);
+        const trans = (progress - 0.5) / 0.25;
+        if (trans > 0.2) drawLine(0, 140, 200, 0, '#0000ff', 2); // Blue Demand
+        if (trans > 0.4) drawLine(0, 140, 100, 0, '#ff0000', 2, true); // Dashed red MR
+        // Split the dot
+        if (trans > 0.6) {
+          const split = (trans - 0.6) / 0.4;
+          dot(100 - split * 25, 80 + split * 40, '#ff0000'); // To profit-max C
+          if (split > 0.3) dot(100, 80, '#0000ff'); // To min ATC D
+          if (split > 0.6) dot(75, 120, '#800000'); // To monopoly price E
+        }
+      } else {
+        // Monopoly (your second image)
+        caption.textContent = "Monopoly: Three separate points = inefficiency + rents";
+        drawCurve(ATC, '#0000ff', 2);
+        drawCurve(MC, '#ff0000', 2);
+        drawLine(0, 140, 200, 0, '#0000ff', 2); // Demand
+        drawLine(0, 140, 100, 0, '#ff0000', 2, true); // MR
+        dot(75, 120, '#ff0000'); label('C (MR=MC)', 75, 120);
+        dot(100, 80, '#0000ff'); label('D (min ATC)', 100, 80);
+        dot(75, 120, '#800000'); label('E (Monopoly Price)', 75, 120);
+        rectangle(75, 120, 100, 80, '#ffd700'); // Profit rectangle
+      }
+
+      t += 16; // ~60fps
+      requestAnimationFrame(animate);
+    }
+
+    function label(text, q, p) {
+      ctx.fillStyle = '#000'; ctx.font = '12px sans-serif';
+      ctx.fillText(text, x(q) + 5, y(p) - 5);
+    }
+
+    animate();
+  </script>
 </body>
 </html>
