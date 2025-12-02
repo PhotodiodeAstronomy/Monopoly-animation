@@ -1,54 +1,108 @@
-const anim = new Manim("#animation");
+const canvas = document.getElementById('animation');
+const ctx = canvas.getContext('2d');
+const caption = document.getElementById('caption');
 
-anim.scene(() => {
-  // Axes
-  const axes = anim.axes({ x: { min:0, max:220 }, y: { min:0, max:220 } });
-  const caption = document.getElementById("caption");
+canvas.width = 800;
+canvas.height = 600;
 
-  // Curves (same numbers I gave earlier)
-  const ATC = anim.curve((q) => 50 + 1000/q + 0.01*q*q, { stroke: "#1f77b4", strokeWidth: 5 });
-  const MC  = anim.curve((q) => 50 + 0.02*q,         { stroke: "#ff7f0e", strokeWidth: 5 });
-  
-  // Phase 1: Perfect Competition
-  caption.textContent = "Perfect Competition – all three points coincide";
-  const Pcomp = anim.line([[0,90],[200,90]], { stroke: "#2ca02c", strokeWidth: 5 });
-  const dot1 = anim.circle([100,90], 0.15, { fill: "#9467bd" });
-  anim.play([ATC.fadeIn(), MC.fadeIn(), Pcomp.fadeIn(), dot1.fadeIn()], 2);
-  anim.wait(2);
+// Scale: Q 0-200 left-right, $ 0-200 bottom-top (invert Y for canvas)
+const scaleX = 4; // 200 units -> 800px
+const scaleY = -3; // 200 units -> 600px, inverted
+const originX = 50;
+const originY = 550;
 
-  // Label the single point
-  anim.text("Min ATC = Profit-max Q = Social optimum", [100, 60], { fill: "#9467bd" }).fadeIn(1);
-  anim.wait(3);
+function clear() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
+function drawAxes() {
+  ctx.strokeStyle = '#666'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(originX, 50); ctx.lineTo(originX, originY); ctx.stroke(); // Y axis
+  ctx.beginPath(); ctx.moveTo(originX, originY); ctx.lineTo(750, originY); ctx.stroke(); // X axis
+  ctx.fillText('Q', 760, originY + 15); ctx.fillText('$', originX - 10, 60);
+}
 
-  // Phase 2: Transition to Monopoly
-  caption.textContent = "The same industry becomes a monopoly...";
-  anim.play(Pcomp.fadeOut(), 1);
-  
-  const demand = anim.line([[0,200],[200,0]], { stroke: "#d62728", strokeWidth: 5 });
-  const MR     = anim.line([[0,200],[100,0]], { stroke: "#d62728", strokeWidth: 5, strokeDasharray: "8 8" });
-  anim.play([demand.fadeIn(), MR.fadeIn()], 2);
+// Curve functions (same math as before)
+function atc(q) { return 50 + 1000 / q + 0.01 * q * q; }
+function mc(q) { return 50 + 0.02 * q; }
+function drawCurve(fn, color, width = 3, from = 10, to = 200, alpha = 1) {
+  ctx.strokeStyle = color; ctx.lineWidth = width; ctx.globalAlpha = alpha;
+  ctx.beginPath();
+  let x = from; ctx.moveTo(originX + x * scaleX, originY + fn(x) * scaleY);
+  for (let i = from + 1; i <= to; i++) {
+    x = i; ctx.lineTo(originX + x * scaleX, originY + fn(x) * scaleY);
+  }
+  ctx.stroke(); ctx.globalAlpha = 1;
+}
+function drawLine(x1, y1, x2, y2, color, width = 3, dashed = false) {
+  ctx.strokeStyle = color; ctx.lineWidth = width;
+  if (dashed) ctx.setLineDash([10, 5]); else ctx.setLineDash([]);
+  ctx.beginPath(); ctx.moveTo(originX + x1 * scaleX, originY + y1 * scaleY);
+  ctx.lineTo(originX + x2 * scaleX, originY + y2 * scaleY); ctx.stroke(); ctx.setLineDash([]);
+}
+function drawDot(x, y, r = 8, color) {
+  ctx.fillStyle = color; ctx.beginPath(); ctx.arc(originX + x * scaleX, originY + y * scaleY, r, 0, 2 * Math.PI); ctx.fill();
+}
+function drawText(text, x, y, color = '#000', size = 14) {
+  ctx.fillStyle = color; ctx.font = `${size}px sans-serif`; ctx.fillText(text, originX + x * scaleX, originY + y * scaleY);
+}
+function drawPolygon(points, color, opacity = 0.7) {
+  ctx.fillStyle = color; ctx.globalAlpha = opacity;
+  ctx.beginPath(); ctx.moveTo(originX + points[0][0] * scaleX, originY + points[0][1] * scaleY);
+  for (let i = 1; i < points.length; i++) {
+    ctx.lineTo(originX + points[i][0] * scaleX, originY + points[i][1] * scaleY);
+  }
+  ctx.closePath(); ctx.fill(); ctx.globalAlpha = 1;
+}
 
-  // Move the three dots apart
-  caption.textContent = "Watch the three points tear apart";
-  const redDot   = anim.circle([75,125], 0.15, { fill: "#e377c2" });   // MR=MC
-  const blueDot  = anim.circle([100,90], 0.15, { fill: "#1f77b4" });   // min ATC
-  const greenDot = anim.circle([150,90], 0.15, { fill: "#2ca02c" });   // P=MC
+// Animation timeline
+let time = 0;
+const duration = 20000; // 20s total
+function animate() {
+  clear(); drawAxes();
+  const progress = time / duration;
 
-  anim.play(
-    dot1.moveTo([75,125]), dot1.change({ fill: "#e377c2" }),
-    blueDot.fadeIn(), greenDot.fadeIn(),
-    3
-  );
+  // Phase 1: Perfect Competition (0-40%)
+  if (progress < 0.4) {
+    caption.textContent = "Perfect Competition – all three points coincide";
+    const fade = progress / 0.4;
+    drawCurve(atc, '#1f77b4', 3, 10, 200, fade); // ATC
+    drawCurve(mc, '#ff7f0e', 3, 10, 200, fade); // MC
+    drawLine(0, 90, 200, 90, '#2ca02c', 3, false); // P = 90
+    if (fade > 0.5) drawDot(100, 90, 8, '#9467bd'); // Single dot
+    if (progress > 0.2) drawText("All three coincide here", 100, 60, '#9467bd', 16);
+  }
+  // Phase 2: Transition to Monopoly (40-70%)
+  else if (progress < 0.7) {
+    caption.textContent = "Now the same industry becomes a monopoly…";
+    drawCurve(atc, '#1f77b4'); drawCurve(mc, '#ff7f0e');
+    const trans = (progress - 0.4) / 0.3;
+    // Fade out Pcomp
+    drawLine(0, 90 + trans * 35, 200, 90 + trans * 35, '#2ca02c', 3, false); // Morph to higher P
+    // Draw demand and MR
+    if (trans > 0.3) drawLine(0, 200, 200, 0, '#d62728'); // Demand
+    if (trans > 0.5) drawLine(0, 200, 100, 0, '#d62728', 3, true); // MR dashed
+    // Start splitting dot
+    if (trans > 0.7) {
+      drawDot(100 - (trans - 0.7) * 25 * 4, 90 + (trans - 0.7) * 35 * 4, 8, '#e377c2'); // Pink to (75,125)
+      if (trans > 0.8) drawDot(100, 90, 8, '#1f77b4'); // Blue stays
+      if (trans > 0.9) drawDot(150, 90, 8, '#2ca02c'); // Green to 150
+    }
+  }
+  // Phase 3: Monopoly Final (70-100%)
+  else {
+    caption.textContent = "Monopoly: three separate points = inefficiency + rents";
+    drawCurve(atc, '#1f77b4'); drawCurve(mc, '#ff7f0e');
+    drawLine(0, 200, 200, 0, '#d62728'); // Demand
+    drawLine(0, 200, 100, 0, '#d62728', 3, true); // MR
+    drawDot(75, 125, 8, '#e377c2'); // Profit-max
+    drawDot(100, 90, 8, '#1f77b4'); // Min ATC
+    drawDot(150, 90, 8, '#2ca02c'); // Social
+    drawPolygon([[75,125],[150,90],[150,125]], '#ff9999'); // DWL triangle
+    drawText("Profit-max Q", 75, 140, '#e377c2', 16);
+    drawText("Min efficient scale", 100, 70, '#1f77b4', 16);
+    drawText("Social optimum", 150, 70, '#2ca02c', 16);
+  }
 
-  // Deadweight loss & monopoly rectangle
-  const dwl = anim.polygon([[75,125],[150,90],[150,125]], { fill: "#ff9999", opacity: 0.6 });
-  const profit = anim.polygon([[0,90],[75,90],[75,125],[0,125]], { fill: "#99ff99", opacity: 0.5 });
-  anim.play([dwl.fadeIn(), profit.fadeIn()], 1.5);
+  time = (time + 16) % duration; // ~60fps loop
+  requestAnimationFrame(animate);
+}
 
-  // Final labels
-  caption.textContent = "Monopoly: three separate points → inefficiency + rents";
-  anim.text("Profit-max Q (pink)", [75,135], { fill: "#e377c2" }).shift([0,10]).fadeIn();
-  anim.text("Min efficient scale (blue)", [100,70], { fill: "#1f77b4" }).fadeIn();
-  anim.text("Social optimum (green)", [150,70], { fill: "#2ca02c" }).fadeIn();
-  anim.wait(5);
-});
+animate(); // Start the loop
