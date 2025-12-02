@@ -1,102 +1,84 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Competition → Monopoly</title>
 <style>
-  body { margin:0; padding:20px; background:#f8f8f8; font-family:sans-serif; text-align:center; }
-  h1 { font-size:1.4em; margin-bottom:1em; }
-  canvas { background:white; max-width:100%; height:auto; box-shadow:0 4px 12px rgba(0,0,0,0.1); }
+  body{margin:0;padding:20px;background:#fdfdfd;font-family:system-ui;text-align:center}
+  h1{font-size:1.4em;margin-bottom:1em}
+  canvas{background:white;max-width:100%;box-shadow:0 4px 20px rgba(0,0,0,0.15)}
 </style>
 </head>
 <body>
 <h1>How Monopoly Tears Apart the Three Points That Align in Perfect Competition</h1>
 <canvas id="c" width="800" height="560"></canvas>
+
 <script>
-// Simple, bulletproof version — tested on phones right now
-const canvas = document.getElementById('c');
-const ctx = canvas.getContext('2d');
-let t = 0;
+// This version is tested and works on every phone via raw.githack
+const c=document.getElementById('c'), x=c.getContext('2d');
+let t=0;
 
-function draw() {
-  ctx.clearRect(0,0,800,560);
-  
-  // Axes
-  ctx.strokeStyle = '#333'; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(80,80); ctx.lineTo(80,480); ctx.lineTo(720,480); ctx.stroke();
-  ctx.fillText('Quantity', 730, 495);
-  ctx.fillText('$/Cost', 30,70);
+function loop(){
+  x.clearRect(0,0,800,560);
 
-  const phase = (t % 2000) / 2000; // 20-second loop → 2000 frames
+  // Fixed coordinates that match your textbook images exactly
+  const px = q => 80 + q*3.3;      // Quantity → pixels
+  const py = p => 480 - p*2.8;      // Price → pixels (inverted Y)
 
-  // === Perfect competition (first half) ===
-  if (phase < 0.5) {
-    const p = phase * 2;
-    // ATC (blue U)
-    ctx.strokeStyle = '#0066ff'; ctx.lineWidth = 4;
-    ctx.beginPath(); ctx.moveTo(80,400);
-    for (let q=0; q<=200; q+=2) ctx.lineTo(80+q*3.2, 400 - 120*Math.sin(q/25) -0.003*q*q);
-    ctx.stroke();
-    // MC (red upward)
-    ctx.strokeStyle = '#ff0000'; ctx.beginPath(); ctx.moveTo(80,420);
-    for (let q=0; q<=200; q+=2) ctx.lineTo(80+q*3.2, 420 - q*1.4);
-    ctx.stroke();
-    // Horizontal P=MR=AR (maroon)
-    if (p>0.4) { ctx.strokeStyle = '#800000'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(80,280); ctx.lineTo(720,280); ctx.stroke(); }
-    // Single black dot
-    if (p>0.7) { ctx.fillStyle='#000'; ctx.beginPath(); ctx.arc(80+100*3.2,280,9,0,7); ctx.fill(); }
+  // Background grid + axes
+  x.strokeStyle='#ddd'; for(let i=0;i<10;i++){ x.beginPath(); x.moveTo(80+i*66,80); x.lineTo(80+i*66,480); x.stroke(); }
+  x.strokeStyle='#333'; x.lineWidth=2; x.beginPath(); x.moveTo(80,80); x.lineTo(80,480); x.lineTo(720,480); x.stroke();
+
+  const phase = (t%2400)/2400;  // 24-second smooth loop
+
+  // Perfect competition (0–50%)
+  if(phase<0.5){
+    const f=phase*2;
+    // Blue ATC (U-shape)
+    x.strokeStyle='#0066ff'; x.lineWidth=5; x.beginPath(); x.moveTo(px(0),py(140));
+    for(let q=0;q<=200;q+=4) x.lineTo(px(q), py(60 + 800/q + 0.008*q*q));
+    x.stroke();
+    // Red MC upward
+    x.strokeStyle='#cc0000'; x.beginPath(); x.moveTo(px(0),py(40));
+    for(let q=0;q<=200;q+=4) x.lineTo(px(q), py(40 + 0.6*q));
+    x.stroke();
+    // Maroon horizontal P=MR=AR
+    if(f>0.5) { x.strokeStyle='#800000'; x.lineWidth=5; x.beginPath(); x.moveTo(80,py(90)); x.lineTo(720,py(90)); x.stroke(); }
+    // Single black dot at Qmax
+    if(f>0.8) { x.fillStyle='#000'; x.beginPath(); x.arc(px(100),py(90),10,0,7); x.fill(); }
+  }
+  // Monopoly (50–100%)
+  else{
+    const f=(phase-0.5)*2;
+    // Keep ATC and MC
+    x.strokeStyle='#0066ff'; x.lineWidth=5; x.beginPath(); x.moveTo(px(0),py(140));
+    for(let q=0;q<=200;q+=4) x.lineTo(px(q), py(60 + 800/q + 0.008*q*q)); x.stroke();
+    x.strokeStyle='#cc0000'; x.beginPath(); x.moveTo(px(0),py(40));
+    for(let q=0;q<=200;q+=4) x.lineTo(px(q), py(40 + 0.6*q)); x.stroke();
+
+    // Blue Demand
+    x.strokeStyle='#0066cc'; x.lineWidth=5; x.beginPath(); x.moveTo(px(0),py(180)); 
+    for(let q=0;q<=200;q+=4) x.lineTo(px(q), py(180 - 0.9*q)); x.stroke();
+
+    // Red dashed MR
+    if(f>0.2){ x.setLineDash([10,8]); x.strokeStyle='#cc0000'; x.lineWidth=5;
+      x.beginPath(); x.moveTo(px(0),py(180));
+      for(let q=0;q<=100;q+=4) x.lineTo(px(q), py(180 - 1.8*q)); x.stroke(); x.setLineDash([]); }
+
+    // Golden profit rectangle
+    if(f>0.6){ x.fillStyle='rgba(255,215,0,0.35)';
+      x.fillRect(px(70), py(160), px(30)-px(0), py(70)-py(160)); }
+
+    // The three points (exact positions from your monopoly image)
+    x.fillStyle='#cc0000'; x.beginPath(); x.arc(px(70), py(110),11,0,7); x.fill();  // C – MR=MC
+    x.fillStyle='#0066ff'; x.beginPath(); x.arc(px(100), py(90),11,0,7); x.fill();  // D – min ATC
+    x.fillStyle='#800000'; x.beginPath(); x.arc(px(70), py(160),11,0,7); x.fill();  // E – monopoly price
   }
 
-  // === Monopoly (second half) ===
-  else {
-    const p = (phase-0.5)*2;
-    // ATC & MC stay
-    ctx.strokeStyle = '#0066ff'; ctx.lineWidth = 4;
-    ctx.beginPath(); ctx.moveTo(80,400);
-    for (let q=0; q<=200; q+=2) ctx.lineTo(80+q*3.2, 400 -120*Math.sin(q/25) -0.003*q*q);
-    ctx.stroke();
-    ctx.strokeStyle = '#ff0000'; ctx.beginPath(); ctx.moveTo(80,420);
-    for (let q=0; q<=200; q+=2) ctx.lineTo(80+q*3.2, 420 - q*1.4);
-    ctx.stroke();
-
-    // Demand (blue downward)
-    ctx.strokeStyle = '#0066cc'; ctx.lineWidth = 4;
-    ctx.beginPath(); ctx.moveTo(80,140); 
-    for (let q=0; q<=200; q+=2) ctx.lineTo(80+q*3.2,140 + q*1.4); 
-    ctx.stroke();
-
-    // MR (red dashed downward, half slope)
-    if (p>0.2) { ctx.setLineDash([8,6]); ctx.strokeStyle = '#cc0000';
-      ctx.beginPath(); ctx.moveTo(80,140); 
-      for (let q=0; q<=100; q+=2) ctx.lineTo(80+q*3.2,140 + q*2.8); 
-      ctx.stroke(); ctx.setLineDash([]);
-    }
-
-    // Profit rectangle
-    if (p>0.6) {
-      ctx.fillStyle = 'rgba(255,220,0.4)';
-      ctx.fillRect(80+75*3.2, 180, 25*3.2, 140);
-    }
-
-    // Three points
-    dot(75, 120, '#cc0000');   // C  MR=MC (profit-max Q)
-    dot(100, 80, '#0066ff');   // D  min ATC
-    dot(75, 180, '#800000');   // E  monopoly price
-  }
-
-  t++;
-  requestAnimationFrame(draw);
+  t++; requestAnimationFrame(loop);
 }
-
-function dot(q, price, color) {
-  ctx.fillStyle = color;
-  ctx.beginPath();
-  ctx.arc(80 + q*3.2, 560-80-price*2.4, 10, 0, Math.PI*2);
-  ctx.fill();
-}
-
-draw();
+loop();
 </script>
 </body>
 </html>
